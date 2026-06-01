@@ -1,121 +1,47 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+<a-scene mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.001; filterBeta: 1000;" 
+         embedded color-space="sRGB" 
+         renderer="colorManagement: true, physicallyCorrectLights: true" 
+         vr-mode-ui="enabled: false" 
+         device-orientation-permission-ui="enabled: false">
+  
+  <a-assets>
+    <!-- Ensure your video has the correct attributes for auto-playback in WebAR -->
+    <video id="arVideo" 
+           src="./your-video.mp4" 
+           preload="auto" 
+           loop="true" 
+           playsinline 
+           webkit-playsinline 
+           muted="false">
+    </video>
+  </a-assets>
+
+  <a-camera position="0 0 0" look-controls="enabled: false" raycaster="objects: .cant-touch-this"></a-camera>
+
+  <!-- Target Anchor -->
+  <a-target mindar-image-target="target: 0">
     
-    <style>
-      #info-overlay {
-        position: absolute;
-        bottom: 25px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 999;
-        background: rgba(0, 0, 0, 0.75);
-        color: white;
-        padding: 12px 24px;
-        border-radius: 30px;
-        font-family: sans-serif;
-        font-size: 14px;
-        text-align: center;
-        pointer-events: none;
-        width: 80%;
-        max-width: 300px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-      }
-    </style>
-  </head>
-  <body>
+    <!-- 3D EFFECT LAYER: Floating Shadow/Glow Background Behind Video -->
+    <a-entity geometry="primitive: plane; width: 1.05; height: 0.6" 
+              material="color: #1a1a1a; opacity: 0.8; roughness: 0.5; metalness: 0.2"
+              position="0 0 -0.01">
+    </a-entity>
 
-    <div id="info-overlay">Scan the silhouette image to begin.</div>
+    <!-- THE VIDEO PLANE: Forward offset by 0.02m to create depth/3D float -->
+    <!-- Removed any class like 'clickable' or target click event handlers -->
+    <a-video src="#arVideo" 
+             width="1" 
+             height="0.5625" 
+             position="0 0 0.02"
+             scale="1 1 1">
+    </a-video>
 
-    <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;" 
-      vr-mode-ui="enabled: false" 
-      device-orientation-permission-ui="enabled: false">
-      
-      <a-assets>
-        <video id="tasawur-vid" src="./tasawur_video.mp4" preload="auto" loop="true" crossorigin="anonymous" playsinline webkit-playsinline></video>
-      </a-assets>
+    <!-- 3D EFFECT LAYER: Subtle border frame wrapping the video -->
+    <a-entity geometry="primitive: ring; radiusInner: 0.5; radiusOuter: 0.52"
+              material="color: #00ffcc; shader: flat"
+              position="0 0 0.021"
+              scale="1 0.5625 1">
+    </a-entity>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-      <a-entity id="tracking-anchor" mindar-image-target="targetIndex: 0">
-        <a-video 
-          id="ar-video-display" 
-          src="#tasawur-vid" 
-          width="1" 
-          height="0.56" 
-          position="0 0 0.2" 
-          rotation="0 0 0">
-        </a-video>
-      </a-entity>
-
-      <a-entity id="air-anchor"></a-entity>
-
-    </a-scene>
-
-    <script>
-      const videoEl = document.querySelector('#tasawur-vid');
-      const trackingAnchor = document.querySelector('#tracking-anchor');
-      const airAnchor = document.querySelector('#air-anchor');
-      const videoDisplay = document.querySelector('#ar-video-display');
-      const overlay = document.querySelector('#info-overlay');
-      
-      let isTrackingNow = false;
-      let isFrozenInAir = false;
-
-      // 1. Detect target visibility
-      trackingAnchor.addEventListener("targetFound", () => {
-        isTrackingNow = true;
-        if (!isFrozenInAir) {
-          videoEl.play().catch(err => console.log(err));
-          overlay.innerText = "👉 TAP ANYWHERE on your screen to freeze this video in mid-air!";
-        }
-      });
-
-      trackingAnchor.addEventListener("targetLost", () => {
-        isTrackingNow = false;
-        if (!isFrozenInAir) {
-          videoEl.pause();
-          overlay.innerText = "Target lost. Scan image again.";
-        }
-      });
-
-      // 2. FIXED INTERACTION: Global screen tap listener (Guaranteed to fire on mobile)
-      window.addEventListener('click', () => {
-        // Only trigger freeze if the image is visible and we haven't already frozen it
-        if (!isTrackingNow || isFrozenInAir) return; 
-        
-        isFrozenInAir = true;
-        overlay.innerText = "Video LOCKED in mid-air! You can move away.";
-        overlay.style.background = "rgba(0, 150, 80, 0.9)"; // Turns deep green for success
-
-        // Capture exactly where the tracking engine is holding the video right now
-        const currentWorldPosition = new THREE.Vector3();
-        const currentWorldRotation = new THREE.Quaternion();
-        const currentWorldScale = new THREE.Vector3();
-        
-        videoDisplay.object3D.getWorldPosition(currentWorldPosition);
-        videoDisplay.object3D.getWorldQuaternion(currentWorldRotation);
-        videoDisplay.object3D.getWorldScale(currentWorldScale);
-
-        // Terminate the heavy live matrix calculation tracking loops to lock the scene
-        const sceneEl = document.querySelector('a-scene');
-        sceneEl.systems['mindar-image-system'].stop(); 
-
-        // Detach from the target track entity and push onto the fixed global world coordinate anchor
-        airAnchor.appendChild(videoDisplay);
-
-        // Enforce the spatial vectors onto the element
-        setTimeout(() => {
-          videoDisplay.object3D.position.copy(currentWorldPosition);
-          videoDisplay.object3D.quaternion.copy(currentWorldRotation);
-          videoDisplay.object3D.scale.copy(currentWorldScale);
-        }, 10);
-      });
-    </script>
-  </body>
-</html>
+  </a-target>
+</a-scene>
