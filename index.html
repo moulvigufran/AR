@@ -5,86 +5,31 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    
-    <style>
-      /* Minimalist notification text banner */
-      #info-overlay {
-        position: absolute;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 999;
-        background: rgba(0, 0, 0, 0.75);
-        color: white;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-family: sans-serif;
-        font-size: 14px;
-        text-align: center;
-        pointer-events: none;
-        width: 70%;
-        max-width: 250px;
-      }
-    </style>
   </head>
   <body>
-
-    <div id="info-overlay">Point your camera at the silhouette image...</div>
-
-    <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; maxTrack: 1;" 
-      vr-mode-ui="enabled: false" 
-      device-orientation-permission-ui="enabled: false">
-      
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind;" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
       <a-assets>
         <video id="tasawur-vid" src="./tasawur_video.mp4" preload="auto" loop="true" crossorigin="anonymous" playsinline webkit-playsinline></video>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <a-entity id="ar-target" mindar-image-target="targetIndex: 0">
-        
-        <a-video 
-          id="ar-video-display" 
-          src="#tasawur-vid" 
-          width="1" 
-          height="0.56" 
-          position="0 0 0.25" 
-          rotation="0 0 0">
-        </a-video>
-        
+      <a-entity mindar-image-target="targetIndex: 0">
+        <a-video id="ar-video-display" src="#tasawur-vid" width="1" height="0.56" position="0 0 0"></a-video>
       </a-entity>
-
     </a-scene>
 
     <script>
+      // Automatically handles mobile video playback rules on detection
       const videoEl = document.querySelector('#tasawur-vid');
-      const targetEl = document.querySelector('#ar-target');
-      const overlay = document.querySelector('#info-overlay');
+      const targetEl = document.querySelector('[mindar-image-target]');
 
-      // 1. Play track instantly when the silhouette is found
       targetEl.addEventListener("targetFound", () => {
-        videoEl.play().catch(err => {
-          console.log("Browser blocked sound. Awaiting screen interaction.");
-          overlay.innerText = "🔊 Tap your screen once to unmute and play!";
-        });
-        if(overlay.innerText !== "🔊 Tap your screen once to unmute and play!") {
-          overlay.innerText = "Playing TASAWUR in 3D!";
-        }
+        videoEl.play().catch(err => console.log("Bypassing browser block:", err));
       });
 
-      // 2. Pause video immediately when the camera looks away
       targetEl.addEventListener("targetLost", () => {
         videoEl.pause();
-        overlay.innerText = "Target lost. Scan image again.";
-      });
-
-      // 3. Fallback interaction listener to satisfy mobile media playback security rules
-      window.addEventListener('click', () => {
-        if (videoEl.paused && overlay.innerText.includes("unmute")) {
-          videoEl.play();
-          overlay.innerText = "Playing TASAWUR in 3D!";
-        }
       });
     </script>
   </body>
