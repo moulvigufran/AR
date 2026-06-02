@@ -1,47 +1,91 @@
-<a-scene mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.001; filterBeta: 1000;" 
-         embedded color-space="sRGB" 
-         renderer="colorManagement: true, physicallyCorrectLights: true" 
-         vr-mode-ui="enabled: false" 
-         device-orientation-permission-ui="enabled: false">
-  
-  <a-assets>
-    <!-- Ensure your video has the correct attributes for auto-playback in WebAR -->
-    <video id="arVideo" 
-           src="./your-video.mp4" 
-           preload="auto" 
-           loop="true" 
-           playsinline 
-           webkit-playsinline 
-           muted="false">
-    </video>
-  </a-assets>
-
-  <a-camera position="0 0 0" look-controls="enabled: false" raycaster="objects: .cant-touch-this"></a-camera>
-
-  <!-- Target Anchor -->
-  <a-target mindar-image-target="target: 0">
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
-    <!-- 3D EFFECT LAYER: Floating Shadow/Glow Background Behind Video -->
-    <a-entity geometry="primitive: plane; width: 1.05; height: 0.6" 
-              material="color: #1a1a1a; opacity: 0.8; roughness: 0.5; metalness: 0.2"
-              position="0 0 -0.01">
-    </a-entity>
+    <style>
+      /* Minimalist notification text banner */
+      #info-overlay {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 999;
+        background: rgba(0, 0, 0, 0.75);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-family: sans-serif;
+        font-size: 14px;
+        text-align: center;
+        pointer-events: none;
+        width: 70%;
+        max-width: 250px;
+      }
+    </style>
+  </head>
+  <body>
 
-    <!-- THE VIDEO PLANE: Forward offset by 0.02m to create depth/3D float -->
-    <!-- Removed any class like 'clickable' or target click event handlers -->
-    <a-video src="#arVideo" 
-             width="1" 
-             height="0.5625" 
-             position="0 0 0.02"
-             scale="1 1 1">
-    </a-video>
+    <div id="info-overlay">Point your camera at the silhouette image...</div>
 
-    <!-- 3D EFFECT LAYER: Subtle border frame wrapping the video -->
-    <a-entity geometry="primitive: ring; radiusInner: 0.5; radiusOuter: 0.52"
-              material="color: #00ffcc; shader: flat"
-              position="0 0 0.021"
-              scale="1 0.5625 1">
-    </a-entity>
+    <a-scene 
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; maxTrack: 1;" 
+      vr-mode-ui="enabled: false" 
+      device-orientation-permission-ui="enabled: false">
+      
+      <a-assets>
+        <video id="tasawur-vid" src="./tasawur_video.mp4" preload="auto" loop="true" crossorigin="anonymous" playsinline webkit-playsinline></video>
+      </a-assets>
 
-  </a-target>
-</a-scene>
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity id="ar-target" mindar-image-target="targetIndex: 0">
+        
+        <a-video 
+          id="ar-video-display" 
+          src="#tasawur-vid" 
+          width="1" 
+          height="0.56" 
+          position="0 0 0.25" 
+          rotation="0 0 0">
+        </a-video>
+        
+      </a-entity>
+
+    </a-scene>
+
+    <script>
+      const videoEl = document.querySelector('#tasawur-vid');
+      const targetEl = document.querySelector('#ar-target');
+      const overlay = document.querySelector('#info-overlay');
+
+      // 1. Play track instantly when the silhouette is found
+      targetEl.addEventListener("targetFound", () => {
+        videoEl.play().catch(err => {
+          console.log("Browser blocked sound. Awaiting screen interaction.");
+          overlay.innerText = "🔊 Tap your screen once to unmute and play!";
+        });
+        if(overlay.innerText !== "🔊 Tap your screen once to unmute and play!") {
+          overlay.innerText = "Playing TASAWUR in 3D!";
+        }
+      });
+
+      // 2. Pause video immediately when the camera looks away
+      targetEl.addEventListener("targetLost", () => {
+        videoEl.pause();
+        overlay.innerText = "Target lost. Scan image again.";
+      });
+
+      // 3. Fallback interaction listener to satisfy mobile media playback security rules
+      window.addEventListener('click', () => {
+        if (videoEl.paused && overlay.innerText.includes("unmute")) {
+          videoEl.play();
+          overlay.innerText = "Playing TASAWUR in 3D!";
+        }
+      });
+    </script>
+  </body>
+</html>
