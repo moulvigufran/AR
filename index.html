@@ -5,31 +5,247 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <!-- Chroma Key Shader to erase the green background in real time -->
+    <script src="https://unpkg.com/aframe-chromakey-material/dist/aframe-chromakey-material.min.js"></script>
+    
+    <style>
+      body { 
+        margin: 0; 
+        overflow: hidden; 
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      }
+
+      /* Opening Splash Screen */
+      #splash-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at center, #0a192f 0%, #020813 100%);
+        color: #ffffff;
+        z-index: 2000;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+        padding: 40px 24px;
+        box-sizing: border-box;
+        text-align: center;
+        transition: opacity 0.6s ease, visibility 0.6s ease;
+      }
+
+      #splash-screen.hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .brand-content {
+        margin-top: auto;
+        margin-bottom: auto;
+        max-width: 440px;
+      }
+
+      .brand-tag {
+        color: #00f0ff;
+        font-size: 12px;
+        letter-spacing: 2.5px;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+        font-weight: 600;
+      }
+
+      .brand-title {
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        margin: 0 0 8px 0;
+        color: #ffffff;
+        text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+      }
+
+      .brand-acronym {
+        font-size: 14px;
+        color: #00f0ff;
+        letter-spacing: 1px;
+        margin: 0 0 20px 0;
+        font-weight: 500;
+      }
+
+      .brand-definition {
+        font-size: 15px;
+        line-height: 1.6;
+        color: #b0c4de;
+        margin: 0 0 32px 0;
+        font-weight: 300;
+      }
+
+      #start-ar-btn {
+        background: transparent;
+        color: #00f0ff;
+        border: 1.5px solid #00f0ff;
+        padding: 14px 32px;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        border-radius: 30px;
+        cursor: pointer;
+        box-shadow: 0 0 15px rgba(0, 240, 255, 0.25);
+        transition: all 0.3s ease;
+      }
+
+      #start-ar-btn:active {
+        background: #00f0ff;
+        color: #020813;
+        transform: scale(0.96);
+      }
+
+      .author-credit {
+        font-size: 12px;
+        letter-spacing: 2.5px;
+        color: #7f9bb8;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+      }
+
+      .author-credit span {
+        color: #00f0ff;
+        font-weight: 600;
+      }
+
+      /* Live Camera HUD Overlay */
+      #info-overlay {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 999;
+        background: rgba(0, 20, 40, 0.8);
+        color: #00f0ff;
+        border: 1px solid #00f0ff;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-size: 14px;
+        text-align: center;
+        pointer-events: none;
+        width: 75%;
+        max-width: 280px;
+        box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+      }
+
+      /* Subtle persistent footer credit on AR screen */
+      #ar-footer-credit {
+        position: absolute;
+        bottom: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 999;
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 11px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        pointer-events: none;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+        white-space: nowrap;
+      }
+    </style>
   </head>
   <body>
-    <a-scene mindar-image="imageTargetSrc: ./targets.mind;" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+
+    <!-- Opening Brand & Definition Screen -->
+    <div id="splash-screen">
+      <div class="brand-content">
+        <div class="brand-tag">Interactive Spatial System</div>
+        <h1 class="brand-title">TANU ARCHITECTURE</h1>
+        <div class="brand-acronym">Topical Article &amp; Navigation Unit</div>
+        <p class="brand-definition">
+          An interactive framework designed to bridge physical media with structured digital content—allowing users to scan visual anchors to navigate articles, spatial guides, and holographic projections in real time.
+        </p>
+        <button id="start-ar-btn">Enter Hologram Space</button>
+      </div>
+
+      <div class="author-credit">By <span>M GUFRAN</span></div>
+    </div>
+
+    <!-- AR Camera HUD -->
+    <div id="info-overlay">Scan your target image to project hologram...</div>
+    <div id="ar-footer-credit">TANU Architecture • By M GUFRAN</div>
+
+    <a-scene 
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; maxTrack: 1;" 
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      vr-mode-ui="enabled: false" 
+      device-orientation-permission-ui="enabled: false">
+      
       <a-assets>
-        <video id="tasawur-vid" src="./tasawur_video.mp4" preload="auto" loop="true" crossorigin="anonymous" playsinline webkit-playsinline></video>
+        <video 
+          id="holo-vid" 
+          src="./hologram_video.mp4" 
+          preload="auto" 
+          loop="true" 
+          crossorigin="anonymous" 
+          playsinline 
+          webkit-playsinline>
+        </video>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <a-entity mindar-image-target="targetIndex: 0">
-        <a-video id="ar-video-display" src="#tasawur-vid" width="1" height="0.56" position="0 0 0"></a-video>
+      <!-- Target Image Anchor -->
+      <a-entity id="ar-target" mindar-image-target="targetIndex: 0">
+        <a-plane 
+          id="hologram-display"
+          material="shader: chromakey; src: #holo-vid; color: 0.0 1.0 0.0; transparent: true; opacity: 0.92;"
+          width="1.2" 
+          height="0.68" 
+          position="0 0.2 0.3" 
+          rotation="0 0 0">
+        </a-plane>
       </a-entity>
+
     </a-scene>
 
     <script>
-      // Automatically handles mobile video playback rules on detection
-      const videoEl = document.querySelector('#tasawur-vid');
-      const targetEl = document.querySelector('[mindar-image-target]');
+      const videoEl = document.querySelector('#holo-vid');
+      const targetEl = document.querySelector('#ar-target');
+      const overlay = document.querySelector('#info-overlay');
+      const splashScreen = document.querySelector('#splash-screen');
+      const startBtn = document.querySelector('#start-ar-btn');
+
+      // Dismiss splash screen and unlock audio on tap
+      startBtn.addEventListener('click', () => {
+        splashScreen.classList.add('hidden');
+        // Prime video audio permissions on mobile browsers
+        videoEl.play().then(() => {
+          videoEl.pause();
+          videoEl.currentTime = 0;
+        }).catch(() => {});
+      });
 
       targetEl.addEventListener("targetFound", () => {
-        videoEl.play().catch(err => console.log("Bypassing browser block:", err));
+        splashScreen.classList.add('hidden');
+        videoEl.play().then(() => {
+          overlay.innerText = "✨ Hologram Active";
+        }).catch(() => {
+          overlay.innerText = "🔊 Tap screen once to activate audio";
+        });
       });
 
       targetEl.addEventListener("targetLost", () => {
         videoEl.pause();
+        overlay.innerText = "Target lost. Point camera at image.";
+      });
+
+      // Fallback screen tap to unlock audio if needed
+      window.addEventListener('click', () => {
+        if (!splashScreen.classList.contains('hidden')) return;
+        if (videoEl.paused && overlay.innerText.includes("audio")) {
+          videoEl.play();
+          overlay.innerText = "✨ Hologram Active";
+        }
       });
     </script>
   </body>
