@@ -5,6 +5,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <!-- Chroma Key Shader to erase green background for true hologram look -->
+    <script src="https://unpkg.com/aframe-chromakey-material/dist/aframe-chromakey-material.min.js"></script>
     
     <style>
       body { 
@@ -79,7 +81,6 @@
         transition: all 0.9s cubic-bezier(0.22, 1, 0.36, 1);
       }
 
-      /* Highlighted T-A-N-U Letters */
       .hi-letter {
         color: #00f0ff;
         font-weight: 800;
@@ -88,7 +89,6 @@
         transition: all 0.9s cubic-bezier(0.22, 1, 0.36, 1);
       }
 
-      /* Expanding rest of the words */
       .rest-word {
         display: inline-block;
         max-width: 140px;
@@ -99,7 +99,6 @@
         transition: max-width 0.85s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
       }
 
-      /* Collapsed State -> Morphs into "TANU" */
       .morph-wrapper.collapsed .acronym-expansion {
         gap: 2px;
       }
@@ -116,7 +115,6 @@
         text-shadow: 0 0 24px rgba(0, 240, 255, 0.85), 0 0 8px #00f0ff;
       }
 
-      /* Ultra-Small "ARCHITECTURE" Text */
       .tiny-architecture {
         font-size: 8px;
         letter-spacing: 5px;
@@ -205,7 +203,6 @@
         box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
       }
 
-      /* Subtle persistent footer credit on AR screen */
       #ar-footer-credit {
         position: absolute;
         bottom: 15px;
@@ -252,8 +249,9 @@
     <div id="info-overlay">Scan your target image to project hologram...</div>
     <div id="ar-footer-credit">TANU • By M GUFRAN</div>
 
+    <!-- High missTolerance (60) + responsive tracking filter keeps the hologram locked to the image even as you move your phone -->
     <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; maxTrack: 1; filterMinCF: 0.0001; filterBeta: 0.001; missTolerance: 10;" 
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; maxTrack: 1; filterMinCF: 0.001; filterBeta: 0.01; missTolerance: 60;" 
       color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false" 
@@ -273,27 +271,28 @@
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <!-- Target Image Anchor: Locked 1:1 onto the image surface -->
+      <!-- Target Image Anchor -->
       <a-entity id="ar-target" mindar-image-target="targetIndex: 0">
         
-        <!-- Glowing Cyan Hologram Frame Border -->
-        <a-plane 
-          width="1.03" 
-          height="0.59" 
-          position="0 0 0.015" 
-          material="color: #00f0ff; shader: flat; transparent: true; opacity: 0.65;">
-        </a-plane>
-
-        <!-- Translucent Hologram Video Projection -->
-        <a-video 
-          id="hologram-display"
-          src="#holo-vid" 
-          width="1" 
-          height="0.56" 
-          position="0 0 0.02" 
+        <!-- Glowing Hologram Base Projector Ring on the Image -->
+        <a-ring 
+          color="#00f0ff" 
+          radius-inner="0.28" 
+          radius-outer="0.32" 
+          position="0 0 0.01" 
           rotation="0 0 0"
-          material="transparent: true; opacity: 0.90;">
-        </a-video>
+          material="shader: flat; transparent: true; opacity: 0.7;">
+        </a-ring>
+
+        <!-- Standing 3D Hologram Subject (Green background keyed out, standing upright off the page) -->
+        <a-plane 
+          id="hologram-display"
+          material="shader: chromakey; src: #holo-vid; color: 0.0 1.0 0.0; transparent: true; opacity: 0.90;"
+          width="1.1" 
+          height="0.62" 
+          position="0 0.05 0.28" 
+          rotation="65 0 0">
+        </a-plane>
 
       </a-entity>
 
@@ -308,7 +307,6 @@
       const morphTitle = document.querySelector('#morph-title');
       const brandDef = document.querySelector('#brand-def');
 
-      // Trigger the morph animation from "Topical Article & Navigation Unit" -> "TANU"
       window.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
           morphTitle.classList.add('collapsed');
@@ -316,7 +314,6 @@
         }, 2000);
       });
 
-      // Dismiss splash screen and unlock audio on tap
       startBtn.addEventListener('click', () => {
         splashScreen.classList.add('hidden');
         videoEl.play().then(() => {
@@ -335,7 +332,7 @@
       });
 
       targetEl.addEventListener("targetLost", () => {
-        overlay.innerText = "Point camera back at the image";
+        overlay.innerText = "Keep image in camera view";
       });
 
       window.addEventListener('click', () => {
