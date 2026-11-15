@@ -5,35 +5,53 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    <!-- Chroma Key Shader to erase green background for true hologram look -->
+    <!-- Chroma Key Shader to erase green background -->
     <script src="https://unpkg.com/aframe-chromakey-material/dist/aframe-chromakey-material.min.js"></script>
+    <!-- Nothing OS-style Dot Matrix & Monospace Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
+      :root {
+        --nothing-black: #000000;
+        --nothing-surface: #111111;
+        --nothing-border: #2a2a2a;
+        --nothing-white: #ffffff;
+        --nothing-muted: #888888;
+        --nothing-red: #D71921;
+      }
+
       body { 
         margin: 0; 
         overflow: hidden; 
-        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background: var(--nothing-black);
+        font-family: 'Space Mono', monospace;
         touch-action: none;
+        -webkit-font-smoothing: antialiased;
       }
 
-      /* Opening Splash Screen */
+      /* ================= NOTHING OS SPLASH SCREEN ================= */
       #splash-screen {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        background: radial-gradient(circle at center, #0a192f 0%, #020813 100%);
-        color: #ffffff;
+        background-color: var(--nothing-black);
+        /* Subtle Nothing OS dot-grid pattern */
+        background-image: radial-gradient(#222222 1px, transparent 1px);
+        background-size: 18px 18px;
+        color: var(--nothing-white);
         z-index: 2000;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         align-items: center;
-        padding: 40px 24px;
+        padding: 36px 24px;
         box-sizing: border-box;
         text-align: center;
-        transition: opacity 0.6s ease, visibility 0.6s ease;
+        transition: opacity 0.5s ease, visibility 0.5s ease;
       }
 
       #splash-screen.hidden {
@@ -42,52 +60,78 @@
         pointer-events: none;
       }
 
+      .nothing-top-bar {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        letter-spacing: 2px;
+        color: var(--nothing-muted);
+        border-bottom: 1px dashed var(--nothing-border);
+        padding-bottom: 12px;
+      }
+
+      .rec-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background-color: var(--nothing-red);
+        border-radius: 50%;
+        margin-right: 6px;
+        animation: pulseRed 1.5s infinite;
+      }
+
+      @keyframes pulseRed {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.25; }
+      }
+
       .brand-content {
         margin-top: auto;
         margin-bottom: auto;
-        max-width: 460px;
+        max-width: 440px;
         width: 100%;
         display: flex;
         flex-direction: column;
         align-items: center;
       }
 
-      /* Animated Acronym Container */
+      /* Animated Dot-Matrix Title Morph */
       .morph-wrapper {
-        min-height: 76px;
+        min-height: 84px;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        margin-bottom: 18px;
+        margin-bottom: 20px;
       }
 
       .acronym-expansion {
-        font-size: 20px;
-        font-weight: 400;
+        font-family: 'DotGothic16', monospace;
+        font-size: 22px;
         line-height: 1.4;
-        color: #d8e6f3;
-        letter-spacing: 0.5px;
+        color: var(--nothing-muted);
+        letter-spacing: 1px;
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
         align-items: baseline;
-        gap: 6px;
-        transition: all 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+        gap: 8px;
+        transition: all 0.85s cubic-bezier(0.22, 1, 0.36, 1);
       }
 
       .word-group {
         display: inline-flex;
         align-items: baseline;
-        transition: all 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+        transition: all 0.85s cubic-bezier(0.22, 1, 0.36, 1);
       }
 
       .hi-letter {
-        color: #00f0ff;
-        font-weight: 800;
-        text-shadow: 0 0 14px rgba(0, 240, 255, 0.75);
+        color: var(--nothing-white);
+        font-weight: 700;
         display: inline-block;
-        transition: all 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+        transition: all 0.85s cubic-bezier(0.22, 1, 0.36, 1);
       }
 
       .rest-word {
@@ -97,11 +141,11 @@
         overflow: hidden;
         white-space: nowrap;
         vertical-align: bottom;
-        transition: max-width 0.85s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
+        transition: max-width 0.8s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
       }
 
       .morph-wrapper.collapsed .acronym-expansion {
-        gap: 2px;
+        gap: 4px;
       }
 
       .morph-wrapper.collapsed .rest-word {
@@ -110,143 +154,173 @@
       }
 
       .morph-wrapper.collapsed .hi-letter {
-        font-size: 46px;
-        letter-spacing: 6px;
-        color: #ffffff;
-        text-shadow: 0 0 24px rgba(0, 240, 255, 0.85), 0 0 8px #00f0ff;
+        font-size: 54px;
+        letter-spacing: 8px;
+        color: var(--nothing-white);
       }
 
+      /* Micro "ARCHITECTURE" Text */
       .tiny-architecture {
+        font-family: 'Space Mono', monospace;
         font-size: 8px;
-        letter-spacing: 5px;
+        letter-spacing: 6px;
         text-transform: uppercase;
-        color: #00f0ff;
+        color: var(--nothing-red);
         opacity: 0;
         transform: translateY(-4px);
-        margin-top: 4px;
-        font-weight: 600;
-        transition: opacity 0.8s ease 0.4s, transform 0.8s ease 0.4s;
+        margin-top: 6px;
+        font-weight: 700;
+        transition: opacity 0.7s ease 0.4s, transform 0.7s ease 0.4s;
       }
 
       .morph-wrapper.collapsed .tiny-architecture {
-        opacity: 0.85;
-        transform: translateY(0);
-      }
-
-      .brand-definition {
-        font-size: 14px;
-        line-height: 1.6;
-        color: #9fb6cc;
-        margin: 0 0 32px 0;
-        font-weight: 300;
-        max-width: 380px;
-        opacity: 0;
-        transform: translateY(10px);
-        transition: opacity 0.8s ease 0.6s, transform 0.8s ease 0.6s;
-      }
-
-      .brand-definition.visible {
         opacity: 1;
         transform: translateY(0);
       }
 
+      .nothing-card {
+        background: var(--nothing-surface);
+        border: 1px solid var(--nothing-border);
+        border-radius: 16px;
+        padding: 18px 20px;
+        margin-bottom: 28px;
+        max-width: 360px;
+        opacity: 0;
+        transform: translateY(8px);
+        transition: opacity 0.7s ease 0.5s, transform 0.7s ease 0.5s;
+      }
+
+      .nothing-card.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .brand-definition {
+        font-size: 12px;
+        line-height: 1.65;
+        color: #cccccc;
+        margin: 0;
+        text-align: left;
+      }
+
       #start-ar-btn {
-        background: transparent;
-        color: #00f0ff;
-        border: 1.5px solid #00f0ff;
-        padding: 14px 32px;
-        font-size: 13px;
-        font-weight: 600;
-        letter-spacing: 1.5px;
+        background: var(--nothing-white);
+        color: var(--nothing-black);
+        border: none;
+        padding: 16px 36px;
+        font-family: 'DotGothic16', monospace;
+        font-size: 15px;
+        letter-spacing: 2px;
         text-transform: uppercase;
-        border-radius: 30px;
+        border-radius: 999px;
         cursor: pointer;
-        box-shadow: 0 0 15px rgba(0, 240, 255, 0.25);
-        transition: all 0.3s ease;
+        transition: transform 0.2s ease, background 0.2s ease;
       }
 
       #start-ar-btn:active {
-        background: #00f0ff;
-        color: #020813;
-        transform: scale(0.96);
+        background: var(--nothing-red);
+        color: var(--nothing-white);
+        transform: scale(0.95);
       }
 
       .author-credit {
-        font-size: 12px;
-        letter-spacing: 2.5px;
-        color: #7f9bb8;
+        font-family: 'DotGothic16', monospace;
+        font-size: 13px;
+        letter-spacing: 3px;
+        color: var(--nothing-muted);
         text-transform: uppercase;
-        margin-bottom: 10px;
+        border-top: 1px dashed var(--nothing-border);
+        width: 100%;
+        padding-top: 12px;
       }
 
       .author-credit span {
-        color: #00f0ff;
-        font-weight: 600;
+        color: var(--nothing-white);
       }
 
-      /* Live Camera HUD Overlay */
+      /* ================= NOTHING OS CAMERA HUD ================= */
       #info-overlay {
         position: absolute;
-        top: 20px;
+        top: 18px;
         left: 50%;
         transform: translateX(-50%);
         z-index: 999;
-        background: rgba(0, 20, 40, 0.8);
-        color: #00f0ff;
-        border: 1px solid #00f0ff;
-        padding: 10px 20px;
-        border-radius: 20px;
-        font-size: 14px;
+        background: rgba(0, 0, 0, 0.85);
+        color: var(--nothing-white);
+        border: 1px solid var(--nothing-border);
+        padding: 10px 18px;
+        border-radius: 999px;
+        font-family: 'DotGothic16', monospace;
+        font-size: 13px;
+        letter-spacing: 1px;
         text-align: center;
         pointer-events: none;
-        width: 78%;
-        max-width: 300px;
-        box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        width: 82%;
+        max-width: 320px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      /* Extra Controls Dock (Rotate, Reset Size, Replay, Mute) */
+      #ar-controls {
+        position: absolute;
+        bottom: 42px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 999;
+        display: flex;
+        gap: 8px;
+        background: rgba(0, 0, 0, 0.85);
+        border: 1px solid var(--nothing-border);
+        padding: 6px 10px;
+        border-radius: 999px;
+      }
+
+      .ctrl-btn {
+        background: var(--nothing-surface);
+        color: var(--nothing-white);
+        border: 1px solid var(--nothing-border);
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-family: 'Space Mono', monospace;
+        font-size: 11px;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .ctrl-btn:active {
+        background: var(--nothing-red);
+        border-color: var(--nothing-red);
       }
 
       #ar-footer-credit {
         position: absolute;
-        bottom: 15px;
+        bottom: 14px;
         left: 50%;
         transform: translateX(-50%);
         z-index: 999;
-        color: rgba(255, 255, 255, 0.75);
+        color: rgba(255, 255, 255, 0.7);
+        font-family: 'DotGothic16', monospace;
         font-size: 11px;
-        letter-spacing: 2px;
+        letter-spacing: 2.5px;
         text-transform: uppercase;
         pointer-events: none;
-        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
         white-space: nowrap;
       }
     </style>
-
-    <script>
-      // Custom A-Frame Component: Keeps the standing hologram turned toward the camera from any side (360° around the image)
-      AFRAME.registerComponent('hologram-face-camera', {
-        tick: function () {
-          const camera = this.el.sceneEl.camera;
-          if (!camera) return;
-
-          const camWorldPos = new THREE.Vector3();
-          camera.getWorldPosition(camWorldPos);
-
-          // Convert camera position into the image target's local coordinate space
-          // In MindAR image space: X = right, Y = up along image, Z = perpendicular out of the image
-          const localCamPos = this.el.parentEl.object3D.worldToLocal(camWorldPos.clone());
-
-          // Calculate angle around the Z-axis (the vertical axis rising out of the flat book)
-          const angle = Math.atan2(localCamPos.y, localCamPos.x) - Math.PI / 2;
-          this.el.object3D.rotation.set(0, 0, angle);
-        }
-      });
-    </script>
   </head>
   <body>
 
-    <!-- Opening Brand & Animated Acronym Screen -->
+    <!-- Nothing OS Opening Splash Screen -->
     <div id="splash-screen">
+      <div class="nothing-top-bar">
+        <span><span class="rec-dot"></span>SYS.READY</span>
+        <span>AR // V1.0</span>
+      </div>
+
       <div class="brand-content">
-        
         <div class="morph-wrapper" id="morph-title">
           <div class="acronym-expansion">
             <span class="word-group"><span class="hi-letter">T</span><span class="rest-word">opical</span></span>
@@ -257,23 +331,35 @@
           <div class="tiny-architecture">ARCHITECTURE</div>
         </div>
 
-        <p class="brand-definition" id="brand-def">
-          An interactive spatial framework designed to bridge physical media with structured digital content—allowing users to scan visual anchors to project live holographic experiences.
-        </p>
+        <div class="nothing-card" id="brand-def">
+          <p class="brand-definition">
+            [DEFINITION] Spatial anchor framework linking physical print media to perpendicular holographic projections in real time.
+          </p>
+        </div>
 
-        <button id="start-ar-btn">Enter Hologram Space</button>
+        <button id="start-ar-btn">INITIALIZE CAMERA &rarr;</button>
       </div>
 
-      <div class="author-credit">By <span>M GUFRAN</span></div>
+      <div class="author-credit">BY <span>M GUFRAN</span></div>
     </div>
 
-    <!-- AR Camera HUD -->
-    <div id="info-overlay">Scan your target image to project hologram...</div>
-    <div id="ar-footer-credit">TANU • By M GUFRAN</div>
+    <!-- Nothing OS Camera HUD -->
+    <div id="info-overlay"><span class="rec-dot"></span><span id="status-text">SCAN TARGET IMAGE...</span></div>
 
-    <!-- missTolerance: 45 allows steep 90-degree phone tilts and stepping back while still pausing when you walk away -->
+    <!-- Extra Hologram Controls Dock -->
+    <div id="ar-controls">
+      <button class="ctrl-btn" id="btn-rot-left" title="Turn Left">&circlearrowleft;</button>
+      <button class="ctrl-btn" id="btn-rot-right" title="Turn Right">&circlearrowright;</button>
+      <button class="ctrl-btn" id="btn-reset-scale" title="Reset A4 Size">1:1</button>
+      <button class="ctrl-btn" id="btn-replay" title="Replay Video">REPLAY</button>
+      <button class="ctrl-btn" id="btn-mute" title="Mute/Unmute">MUTE</button>
+    </div>
+
+    <div id="ar-footer-credit">TANU &bull; BY M GUFRAN</div>
+
+    <!-- Heavy smoothing (filterMinCF: 0.0001, filterBeta: 0.0001) eliminates swinging and locks the hologram rigidly -->
     <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; maxTrack: 1; filterMinCF: 0.0005; filterBeta: 0.005; missTolerance: 45; warmupTolerance: 2;" 
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; maxTrack: 1; filterMinCF: 0.0001; filterBeta: 0.0001; missTolerance: 25; warmupTolerance: 3;" 
       color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false" 
@@ -296,31 +382,36 @@
       <!-- Target Image Anchor -->
       <a-entity id="ar-target" mindar-image-target="targetIndex: 0">
         
-        <!-- Scalable Wrapper Group (Default 1.8 = A4 large scale; pinch with 2 fingers to resize) -->
-        <a-entity id="hologram-scaler" scale="1.8 1.8 1.8">
+        <!-- Scalable & Manually Rotatable Wrapper (Default A4 scale 1.8, strictly fixed—no swinging) -->
+        <a-entity id="hologram-scaler" scale="1.8 1.8 1.8" rotation="0 0 0">
           
-          <!-- Glowing Hologram Base Projector Ring -->
+          <!-- Minimalist Monochrome & Red Base Emitter Ring -->
           <a-ring 
-            color="#00f0ff" 
-            radius-inner="0.32" 
-            radius-outer="0.36" 
-            position="0 0 0.01" 
+            color="#ffffff" 
+            radius-inner="0.33" 
+            radius-outer="0.35" 
+            position="0 0 0.005" 
             rotation="0 0 0"
-            material="shader: flat; transparent: true; opacity: 0.75;">
+            material="shader: flat; transparent: true; opacity: 0.6;">
+          </a-ring>
+          <a-ring 
+            color="#D71921" 
+            radius-inner="0.36" 
+            radius-outer="0.375" 
+            position="0 0 0.006" 
+            rotation="0 0 0"
+            material="shader: flat; transparent: true; opacity: 0.85;">
           </a-ring>
 
-          <!-- Rotating Turntable Pivot: Always turns the standing hologram toward your camera from any side -->
-          <a-entity hologram-face-camera>
-            <!-- Full 90-degree upright posture so you can tilt your phone vertically and view from afar -->
-            <a-plane 
-              id="hologram-display"
-              material="shader: chromakey; src: #holo-vid; color: 0.0 1.0 0.0; transparent: true; opacity: 0.94; side: double;"
-              width="1.6" 
-              height="0.9" 
-              position="0 0 0.45" 
-              rotation="90 0 0">
-            </a-plane>
-          </a-entity>
+          <!-- Strictly Perpendicular (90°) Standing Hologram Plane -->
+          <a-plane 
+            id="hologram-display"
+            material="shader: chromakey; src: #holo-vid; color: 0.0 1.0 0.0; transparent: true; opacity: 0.95; side: double;"
+            width="1.6" 
+            height="0.9" 
+            position="0 0 0.45" 
+            rotation="90 0 0">
+          </a-plane>
 
         </a-entity>
 
@@ -331,14 +422,14 @@
     <script>
       const videoEl = document.querySelector('#holo-vid');
       const targetEl = document.querySelector('#ar-target');
-      const overlay = document.querySelector('#info-overlay');
+      const statusText = document.querySelector('#status-text');
       const splashScreen = document.querySelector('#splash-screen');
       const startBtn = document.querySelector('#start-ar-btn');
       const morphTitle = document.querySelector('#morph-title');
       const brandDef = document.querySelector('#brand-def');
       const scalerEl = document.querySelector('#hologram-scaler');
 
-      // 1. Opening Title Morph Animation
+      // 1. Opening Dot-Matrix Morph Animation
       window.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
           morphTitle.classList.add('collapsed');
@@ -359,30 +450,62 @@
       targetEl.addEventListener("targetFound", () => {
         splashScreen.classList.add('hidden');
         videoEl.play().then(() => {
-          overlay.innerText = "✨ Hologram Active (Pinch 2 fingers to resize)";
+          statusText.innerText = "LOCKED // PINCH TO RESIZE";
         }).catch(() => {
-          overlay.innerText = "🔊 Tap screen once to activate audio";
+          statusText.innerText = "TAP SCREEN FOR AUDIO";
         });
       });
 
-      // 4. Pause when camera moves away from the image
+      // 4. Pause when camera moves away
       targetEl.addEventListener("targetLost", () => {
         videoEl.pause();
-        overlay.innerText = "Paused — Point camera back at image";
+        statusText.innerText = "PAUSED // POINT AT IMAGE";
       });
 
       // 5. Fallback screen tap to unlock audio if needed
-      window.addEventListener('click', () => {
+      window.addEventListener('click', (e) => {
         if (!splashScreen.classList.contains('hidden')) return;
-        if (videoEl.paused && overlay.innerText.includes("audio")) {
+        if (e.target.closest('#ar-controls')) return;
+        if (videoEl.paused && statusText.innerText.includes("AUDIO")) {
           videoEl.play();
-          overlay.innerText = "✨ Hologram Active (Pinch 2 fingers to resize)";
+          statusText.innerText = "LOCKED // PINCH TO RESIZE";
         }
       });
 
-      // 6. Two-Finger Pinch-to-Resize Gesture
-      let initialDistance = null;
+      // 6. Extra Controls: Manual Angle Rotation, Reset Scale, Replay, Mute
+      let zRotation = 0;
       let currentScale = 1.8;
+
+      document.querySelector('#btn-rot-left').addEventListener('click', () => {
+        zRotation -= 15;
+        scalerEl.setAttribute('rotation', `0 0 ${zRotation}`);
+      });
+
+      document.querySelector('#btn-rot-right').addEventListener('click', () => {
+        zRotation += 15;
+        scalerEl.setAttribute('rotation', `0 0 ${zRotation}`);
+      });
+
+      document.querySelector('#btn-reset-scale').addEventListener('click', () => {
+        currentScale = 1.8;
+        zRotation = 0;
+        scalerEl.setAttribute('scale', '1.8 1.8 1.8');
+        scalerEl.setAttribute('rotation', '0 0 0');
+      });
+
+      document.querySelector('#btn-replay').addEventListener('click', () => {
+        videoEl.currentTime = 0;
+        videoEl.play();
+      });
+
+      const muteBtn = document.querySelector('#btn-mute');
+      muteBtn.addEventListener('click', () => {
+        videoEl.muted = !videoEl.muted;
+        muteBtn.innerText = videoEl.muted ? "UNMUTE" : "MUTE";
+      });
+
+      // 7. Two-Finger Pinch-to-Resize Gesture
+      let initialDistance = null;
       let startScale = 1.8;
 
       function getTouchDistance(touches) {
@@ -392,27 +515,4 @@
       }
 
       window.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 2) {
-          initialDistance = getTouchDistance(e.touches);
-          startScale = currentScale;
-        }
-      }, { passive: false });
-
-      window.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 2 && initialDistance) {
-          e.preventDefault();
-          const newDistance = getTouchDistance(e.touches);
-          const ratio = newDistance / initialDistance;
-          currentScale = Math.min(Math.max(startScale * ratio, 0.5), 4.5);
-          scalerEl.setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`);
-        }
-      }, { passive: false });
-
-      window.addEventListener('touchend', (e) => {
-        if (e.touches.length < 2) {
-          initialDistance = null;
-        }
-      });
-    </script>
-  </body>
-</html>
+        if (e
