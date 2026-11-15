@@ -3,37 +3,108 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    <!-- Chroma Key Shader to erase green background for true hologram look -->
-    <script src="https://unpkg.com/aframe-chromakey-material/dist/aframe-chromakey-material.min.js"></script>
+    
+    <!-- Nothing OS Dot-Matrix & Technical Monospace Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Built-in Native GLSL Chroma Key Shader -->
+    <script>
+      AFRAME.registerShader('holo-chromakey', {
+        schema: {
+          src: { type: 'map' },
+          color: { type: 'color', default: '#00ff00' },
+          threshold: { type: 'number', default: 0.42 },
+          smoothness: { type: 'number', default: 0.12 },
+          opacity: { type: 'number', default: 0.95 }
+        },
+        init: function (data) {
+          const videoTexture = new THREE.VideoTexture(data.src);
+          videoTexture.minFilter = THREE.LinearFilter;
+          videoTexture.magFilter = THREE.LinearFilter;
+
+          this.material = new THREE.ShaderMaterial({
+            uniforms: {
+              tex: { value: videoTexture },
+              keyColor: { value: new THREE.Color(data.color) },
+              threshold: { value: data.threshold },
+              smoothness: { value: data.smoothness },
+              opacity: { value: data.opacity }
+            },
+            vertexShader: `
+              varying vec2 vUv;
+              void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              }
+            `,
+            fragmentShader: `
+              uniform sampler2D tex;
+              uniform vec3 keyColor;
+              uniform float threshold;
+              uniform float smoothness;
+              uniform float opacity;
+              varying vec2 vUv;
+
+              void main() {
+                vec4 texColor = texture2D(tex, vUv);
+                float diff = distance(texColor.rgb, keyColor);
+                float alpha = smoothstep(threshold, threshold + smoothness, diff);
+                if (alpha < 0.05) discard;
+                gl_FragColor = vec4(texColor.rgb, alpha * opacity);
+              }
+            `,
+            transparent: true,
+            side: THREE.DoubleSide
+          });
+        }
+      });
+    </script>
     
     <style>
-      body { 
-        margin: 0; 
-        overflow: hidden; 
-        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        touch-action: none; /* Enables smooth 2-finger pinch resizing on mobile */
+      :root {
+        --nothing-bg: #000000;
+        --nothing-widget: #141414;
+        --nothing-border: #2C2C2C;
+        --nothing-white: #FFFFFF;
+        --nothing-grey: #8E8E93;
+        --nothing-red: #D71921;
       }
 
-      /* Opening Splash Screen */
-      #splash-screen {
-        position: fixed;
-        top: 0;
-        left: 0;
+      html, body { 
+        margin: 0; 
+        padding: 0;
         width: 100%;
         height: 100%;
-        background: radial-gradient(circle at center, #0a192f 0%, #020813 100%);
-        color: #ffffff;
-        z-index: 2000;
+        overflow: hidden; 
+        background: transparent;
+        font-family: 'Space Mono', monospace;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body.ar-active {
+        touch-action: none;
+      }
+
+      /* ================= NOTHING OS SPLASH SCREEN ================= */
+      #splash-screen {
+        position: fixed;
+        inset: 0;
+        background-color: var(--nothing-bg);
+        background-image: radial-gradient(#262626 1px, transparent 1px);
+        background-size: 16px 16px;
+        color: var(--nothing-white);
+        z-index: 9999;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         align-items: center;
-        padding: 40px 24px;
+        padding: 28px 20px;
         box-sizing: border-box;
-        text-align: center;
-        transition: opacity 0.6s ease, visibility 0.6s ease;
+        transition: opacity 0.45s ease, visibility 0.45s ease;
       }
 
       #splash-screen.hidden {
@@ -42,66 +113,123 @@
         pointer-events: none;
       }
 
-      .brand-content {
-        margin-top: auto;
-        margin-bottom: auto;
-        max-width: 460px;
+      /* Nothing OS Top Status Pill */
+      .nothing-header {
         width: 100%;
+        max-width: 420px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--nothing-widget);
+        border: 1px solid var(--nothing-border);
+        border-radius: 999px;
+        padding: 10px 18px;
+        box-sizing: border-box;
+        font-size: 11px;
+        letter-spacing: 2px;
+        color: var(--nothing-grey);
+      }
+
+      .glyph-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: var(--nothing-red);
+        border-radius: 50%;
+        margin-right: 8px;
+        box-shadow: 0 0 8px var(--nothing-red);
+        animation: blinkDot 1.4s infinite;
+      }
+
+      @keyframes blinkDot {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.2; }
+      }
+
+      /* Nothing OS Center Widget Card */
+      .nothing-widget-box {
+        width: 100%;
+        max-width: 420px;
+        background: var(--nothing-widget);
+        border: 1px solid var(--nothing-border);
+        border-radius: 32px;
+        padding: 44px 24px;
+        box-sizing: border-box;
         display: flex;
         flex-direction: column;
         align-items: center;
+        position: relative;
       }
 
-      /* Animated Acronym Container */
+      /* Corner Screw / Glyph Dots */
+      .widget-corners {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        position: absolute;
+        top: 16px;
+        left: 0;
+        padding: 0 20px;
+        box-sizing: border-box;
+        pointer-events: none;
+      }
+
+      .corner-dot {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: #3A3A3C;
+      }
+
+      /* Morphing Dot-Matrix Title */
       .morph-wrapper {
-        min-height: 76px;
+        min-height: 110px;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        margin-bottom: 18px;
+        margin-bottom: 36px;
       }
 
       .acronym-expansion {
-        font-size: 20px;
-        font-weight: 400;
-        line-height: 1.4;
-        color: #d8e6f3;
-        letter-spacing: 0.5px;
+        font-family: 'DotGothic16', monospace;
+        font-size: 22px;
+        line-height: 1.45;
+        color: var(--nothing-grey);
+        letter-spacing: 1px;
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
         align-items: baseline;
-        gap: 6px;
-        transition: all 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+        gap: 8px;
+        transition: all 0.85s cubic-bezier(0.22, 1, 0.36, 1);
       }
 
       .word-group {
         display: inline-flex;
         align-items: baseline;
-        transition: all 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+        transition: all 0.85s cubic-bezier(0.22, 1, 0.36, 1);
       }
 
       .hi-letter {
-        color: #00f0ff;
-        font-weight: 800;
-        text-shadow: 0 0 14px rgba(0, 240, 255, 0.75);
+        color: var(--nothing-white);
+        font-weight: 700;
         display: inline-block;
-        transition: all 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+        transition: all 0.85s cubic-bezier(0.22, 1, 0.36, 1);
       }
 
       .rest-word {
         display: inline-block;
-        max-width: 140px;
+        max-width: 150px;
         opacity: 1;
         overflow: hidden;
         white-space: nowrap;
         vertical-align: bottom;
-        transition: max-width 0.85s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
+        transition: max-width 0.8s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
       }
 
       .morph-wrapper.collapsed .acronym-expansion {
-        gap: 2px;
+        gap: 4px;
       }
 
       .morph-wrapper.collapsed .rest-word {
@@ -110,122 +238,161 @@
       }
 
       .morph-wrapper.collapsed .hi-letter {
-        font-size: 46px;
-        letter-spacing: 6px;
-        color: #ffffff;
-        text-shadow: 0 0 24px rgba(0, 240, 255, 0.85), 0 0 8px #00f0ff;
+        font-size: 62px;
+        letter-spacing: 10px;
+        color: var(--nothing-white);
       }
 
+      /* Ultra-Small "ARCHITECTURE" Tag */
       .tiny-architecture {
+        font-family: 'Space Mono', monospace;
         font-size: 8px;
-        letter-spacing: 5px;
+        letter-spacing: 6px;
         text-transform: uppercase;
-        color: #00f0ff;
+        color: var(--nothing-red);
         opacity: 0;
         transform: translateY(-4px);
-        margin-top: 4px;
-        font-weight: 600;
-        transition: opacity 0.8s ease 0.4s, transform 0.8s ease 0.4s;
+        margin-top: 8px;
+        font-weight: 700;
+        transition: opacity 0.7s ease 0.4s, transform 0.7s ease 0.4s;
       }
 
       .morph-wrapper.collapsed .tiny-architecture {
-        opacity: 0.85;
-        transform: translateY(0);
-      }
-
-      .brand-definition {
-        font-size: 14px;
-        line-height: 1.6;
-        color: #9fb6cc;
-        margin: 0 0 32px 0;
-        font-weight: 300;
-        max-width: 380px;
-        opacity: 0;
-        transform: translateY(10px);
-        transition: opacity 0.8s ease 0.6s, transform 0.8s ease 0.6s;
-      }
-
-      .brand-definition.visible {
         opacity: 1;
         transform: translateY(0);
       }
 
+      /* Nothing OS Pill Action Button */
       #start-ar-btn {
-        background: transparent;
-        color: #00f0ff;
-        border: 1.5px solid #00f0ff;
-        padding: 14px 32px;
-        font-size: 13px;
-        font-weight: 600;
-        letter-spacing: 1.5px;
+        background: var(--nothing-white);
+        color: var(--nothing-bg);
+        border: none;
+        padding: 18px 34px;
+        font-family: 'DotGothic16', monospace;
+        font-size: 15px;
+        letter-spacing: 2px;
         text-transform: uppercase;
-        border-radius: 30px;
+        border-radius: 999px;
         cursor: pointer;
-        box-shadow: 0 0 15px rgba(0, 240, 255, 0.25);
-        transition: all 0.3s ease;
+        width: 100%;
+        max-width: 280px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
       }
 
       #start-ar-btn:active {
-        background: #00f0ff;
-        color: #020813;
+        background: var(--nothing-red);
+        color: var(--nothing-white);
         transform: scale(0.96);
       }
 
-      .author-credit {
-        font-size: 12px;
-        letter-spacing: 2.5px;
-        color: #7f9bb8;
+      /* Nothing OS Bottom Credit Pill */
+      .nothing-footer {
+        width: 100%;
+        max-width: 420px;
+        border-top: 1px dashed var(--nothing-border);
+        padding-top: 14px;
+        font-family: 'DotGothic16', monospace;
+        font-size: 13px;
+        letter-spacing: 3px;
+        color: var(--nothing-grey);
         text-transform: uppercase;
-        margin-bottom: 10px;
+        text-align: center;
       }
 
-      .author-credit span {
-        color: #00f0ff;
-        font-weight: 600;
+      .nothing-footer span {
+        color: var(--nothing-white);
       }
 
-      /* Live Camera HUD Overlay */
+      /* ================= NOTHING OS CAMERA HUD ================= */
       #info-overlay {
         position: absolute;
-        top: 20px;
+        top: 18px;
         left: 50%;
         transform: translateX(-50%);
         z-index: 999;
-        background: rgba(0, 20, 40, 0.8);
-        color: #00f0ff;
-        border: 1px solid #00f0ff;
-        padding: 10px 20px;
-        border-radius: 20px;
-        font-size: 14px;
+        background: rgba(15, 15, 15, 0.9);
+        color: var(--nothing-white);
+        border: 1px solid var(--nothing-border);
+        padding: 10px 18px;
+        border-radius: 999px;
+        font-family: 'DotGothic16', monospace;
+        font-size: 13px;
+        letter-spacing: 1px;
         text-align: center;
         pointer-events: none;
-        width: 78%;
-        max-width: 300px;
-        box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        width: 82%;
+        max-width: 320px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      #ar-controls {
+        position: absolute;
+        bottom: 42px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 999;
+        display: flex;
+        gap: 8px;
+        background: rgba(15, 15, 15, 0.9);
+        border: 1px solid var(--nothing-border);
+        padding: 6px 10px;
+        border-radius: 999px;
+      }
+
+      .ctrl-btn {
+        background: #1C1C1E;
+        color: var(--nothing-white);
+        border: 1px solid var(--nothing-border);
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-family: 'Space Mono', monospace;
+        font-size: 11px;
+        cursor: pointer;
+        user-select: none;
+        touch-action: manipulation;
+      }
+
+      .ctrl-btn:active {
+        background: var(--nothing-red);
+        border-color: var(--nothing-red);
       }
 
       #ar-footer-credit {
         position: absolute;
-        bottom: 15px;
+        bottom: 14px;
         left: 50%;
         transform: translateX(-50%);
         z-index: 999;
         color: rgba(255, 255, 255, 0.75);
+        font-family: 'DotGothic16', monospace;
         font-size: 11px;
-        letter-spacing: 2px;
+        letter-spacing: 2.5px;
         text-transform: uppercase;
         pointer-events: none;
-        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
         white-space: nowrap;
       }
     </style>
   </head>
   <body>
 
-    <!-- Opening Brand & Animated Acronym Screen -->
+    <!-- Nothing OS Opening Splash Screen (Only Full Form -> TANU, No Definition Box) -->
     <div id="splash-screen">
-      <div class="brand-content">
-        
+      <div class="nothing-header">
+        <span><span class="glyph-dot"></span>TANU.OS</span>
+        <span>HOLO // 01</span>
+      </div>
+
+      <div class="nothing-widget-box">
+        <div class="widget-corners">
+          <span class="corner-dot"></span>
+          <span class="corner-dot"></span>
+        </div>
+
         <div class="morph-wrapper" id="morph-title">
           <div class="acronym-expansion">
             <span class="word-group"><span class="hi-letter">T</span><span class="rest-word">opical</span></span>
@@ -236,25 +403,28 @@
           <div class="tiny-architecture">ARCHITECTURE</div>
         </div>
 
-        <p class="brand-definition" id="brand-def">
-          An interactive spatial framework designed to bridge physical media with structured digital content—allowing users to scan visual anchors to project live holographic experiences.
-        </p>
-
-        <button id="start-ar-btn">Enter Hologram Space</button>
+        <button id="start-ar-btn" type="button">INITIALIZE CAMERA &rarr;</button>
       </div>
 
-      <div class="author-credit">By <span>M GUFRAN</span></div>
+      <div class="nothing-footer">BY <span>M GUFRAN</span></div>
     </div>
 
-    <!-- AR Camera HUD -->
-    <div id="info-overlay">Scan your target image to project hologram...</div>
-    <div id="ar-footer-credit">TANU • By M GUFRAN</div>
+    <!-- Nothing OS Camera HUD -->
+    <div id="info-overlay"><span class="glyph-dot"></span><span id="status-text">SCAN TARGET IMAGE...</span></div>
 
-    <!-- missTolerance: 5 ensures fast pause when camera moves away -->
+    <!-- Hologram Controls Dock -->
+    <div id="ar-controls">
+      <button class="ctrl-btn" id="btn-rot-left" type="button">&circlearrowleft;</button>
+      <button class="ctrl-btn" id="btn-rot-right" type="button">&circlearrowright;</button>
+      <button class="ctrl-btn" id="btn-reset-scale" type="button">1:1</button>
+      <button class="ctrl-btn" id="btn-replay" type="button">REPLAY</button>
+      <button class="ctrl-btn" id="btn-mute" type="button">MUTE</button>
+    </div>
+
+    <div id="ar-footer-credit">TANU &bull; BY M GUFRAN</div>
+
     <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; maxTrack: 1; filterMinCF: 0.001; filterBeta: 0.01; missTolerance: 5;" 
-      color-space="sRGB"
-      renderer="colorManagement: true, physicallyCorrectLights"
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; maxTrack: 1; filterMinCF: 0.0001; filterBeta: 0.0001; missTolerance: 25; warmupTolerance: 3;" 
       vr-mode-ui="enabled: false" 
       device-orientation-permission-ui="enabled: false">
       
@@ -264,6 +434,7 @@
           src="./tasawur_video.html.mp4" 
           preload="auto" 
           loop="true" 
+          muted
           crossorigin="anonymous" 
           playsinline 
           webkit-playsinline>
@@ -275,27 +446,35 @@
       <!-- Target Image Anchor -->
       <a-entity id="ar-target" mindar-image-target="targetIndex: 0">
         
-        <!-- Scalable Wrapper Group (Default scale 1.8 = ~2/3 to full A4 presence; pinch with 2 fingers to resize) -->
-        <a-entity id="hologram-scaler" scale="1.8 1.8 1.8">
+        <!-- Scalable & Manually Rotatable Wrapper (Default A4 scale 1.8, strictly perpendicular) -->
+        <a-entity id="hologram-scaler" scale="1.8 1.8 1.8" rotation="0 0 0">
           
-          <!-- Glowing Hologram Base Projector Ring -->
+          <!-- Minimalist Monochrome & Red Base Emitter Ring -->
           <a-ring 
-            color="#00f0ff" 
-            radius-inner="0.32" 
-            radius-outer="0.36" 
-            position="0 0 0.01" 
+            color="#ffffff" 
+            radius-inner="0.33" 
+            radius-outer="0.35" 
+            position="0 0 0.005" 
             rotation="0 0 0"
-            material="shader: flat; transparent: true; opacity: 0.75;">
+            material="shader: flat; transparent: true; opacity: 0.6;">
+          </a-ring>
+          <a-ring 
+            color="#D71921" 
+            radius-inner="0.36" 
+            radius-outer="0.375" 
+            position="0 0 0.006" 
+            rotation="0 0 0"
+            material="shader: flat; transparent: true; opacity: 0.85;">
           </a-ring>
 
-          <!-- Large Standing 3D Hologram Subject (16:9 widescreen ratio, green background keyed out) -->
+          <!-- Strictly Perpendicular (90°) Standing Hologram Plane -->
           <a-plane 
             id="hologram-display"
-            material="shader: chromakey; src: #holo-vid; color: 0.0 1.0 0.0; transparent: true; opacity: 0.94;"
+            material="shader: holo-chromakey; src: #holo-vid; color: #00ff00; threshold: 0.42; smoothness: 0.12; opacity: 0.95;"
             width="1.6" 
             height="0.9" 
-            position="0 0.05 0.42" 
-            rotation="65 0 0">
+            position="0 0 0.45" 
+            rotation="90 0 0">
           </a-plane>
 
         </a-entity>
@@ -305,91 +484,127 @@
     </a-scene>
 
     <script>
-      const videoEl = document.querySelector('#holo-vid');
-      const targetEl = document.querySelector('#ar-target');
-      const overlay = document.querySelector('#info-overlay');
-      const splashScreen = document.querySelector('#splash-screen');
-      const startBtn = document.querySelector('#start-ar-btn');
-      const morphTitle = document.querySelector('#morph-title');
-      const brandDef = document.querySelector('#brand-def');
-      const scalerEl = document.querySelector('#hologram-scaler');
+      (function () {
+        const videoEl = document.getElementById('holo-vid');
+        const targetEl = document.getElementById('ar-target');
+        const statusText = document.getElementById('status-text');
+        const splashScreen = document.getElementById('splash-screen');
+        const startBtn = document.getElementById('start-ar-btn');
+        const morphTitle = document.getElementById('morph-title');
+        const scalerEl = document.getElementById('hologram-scaler');
+        const muteBtn = document.getElementById('btn-mute');
 
-      // 1. Opening Title Morph Animation
-      window.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
+        // 1. Morph Animation: Topical Article & Navigation Unit -> TANU
+        setTimeout(function () {
           morphTitle.classList.add('collapsed');
-          brandDef.classList.add('visible');
-        }, 2000);
-      });
+        }, 1600);
 
-      // 2. Dismiss splash screen and unlock audio on tap
-      startBtn.addEventListener('click', () => {
-        splashScreen.classList.add('hidden');
-        videoEl.play().then(() => {
-          videoEl.pause();
-          videoEl.currentTime = 0;
-        }).catch(() => {});
-      });
-
-      // 3. Play when image is scanned
-      targetEl.addEventListener("targetFound", () => {
-        splashScreen.classList.add('hidden');
-        videoEl.play().then(() => {
-          overlay.innerText = "✨ Hologram Active (Pinch 2 fingers to resize)";
-        }).catch(() => {
-          overlay.innerText = "🔊 Tap screen once to activate audio";
+        // 2. Enter Camera
+        startBtn.addEventListener('click', function () {
+          splashScreen.classList.add('hidden');
+          document.body.classList.add('ar-active');
+          videoEl.muted = false;
+          videoEl.play().then(function () {
+            videoEl.pause();
+            videoEl.currentTime = 0;
+          }).catch(function () {
+            videoEl.muted = true;
+            muteBtn.innerText = "UNMUTE";
+          });
         });
-      });
 
-      // 4. Pause immediately when camera moves away from the image
-      targetEl.addEventListener("targetLost", () => {
-        videoEl.pause();
-        overlay.innerText = "Paused — Point camera back at image";
-      });
+        // 3. Play when image is scanned
+        targetEl.addEventListener("targetFound", function () {
+          splashScreen.classList.add('hidden');
+          document.body.classList.add('ar-active');
+          videoEl.play().then(function () {
+            statusText.innerText = videoEl.muted ? "LOCKED // TAP UNMUTE" : "LOCKED // PINCH TO RESIZE";
+          }).catch(function () {
+            videoEl.muted = true;
+            muteBtn.innerText = "UNMUTE";
+            videoEl.play();
+            statusText.innerText = "LOCKED // TAP UNMUTE";
+          });
+        });
 
-      // 5. Fallback screen tap to unlock audio if needed
-      window.addEventListener('click', () => {
-        if (!splashScreen.classList.contains('hidden')) return;
-        if (videoEl.paused && overlay.innerText.includes("audio")) {
+        // 4. Pause when camera moves away
+        targetEl.addEventListener("targetLost", function () {
+          videoEl.pause();
+          statusText.innerText = "PAUSED // POINT AT IMAGE";
+        });
+
+        // 5. Controls Dock
+        let zRotation = 0;
+        let currentScale = 1.8;
+
+        document.getElementById('btn-rot-left').addEventListener('click', function () {
+          zRotation -= 15;
+          scalerEl.setAttribute('rotation', '0 0 ' + zRotation);
+        });
+
+        document.getElementById('btn-rot-right').addEventListener('click', function () {
+          zRotation += 15;
+          scalerEl.setAttribute('rotation', '0 0 ' + zRotation);
+        });
+
+        document.getElementById('btn-reset-scale').addEventListener('click', function () {
+          currentScale = 1.8;
+          zRotation = 0;
+          scalerEl.setAttribute('scale', '1.8 1.8 1.8');
+          scalerEl.setAttribute('rotation', '0 0 0');
+        });
+
+        document.getElementById('btn-replay').addEventListener('click', function () {
+          videoEl.currentTime = 0;
           videoEl.play();
-          overlay.innerText = "✨ Hologram Active (Pinch 2 fingers to resize)";
+        });
+
+        muteBtn.addEventListener('click', function () {
+          videoEl.muted = !videoEl.muted;
+          muteBtn.innerText = videoEl.muted ? "UNMUTE" : "MUTE";
+          if (!videoEl.muted && videoEl.paused) {
+            videoEl.play();
+          }
+          if (!videoEl.muted) {
+            statusText.innerText = "LOCKED // PINCH TO RESIZE";
+          }
+        });
+
+        // 6. Two-Finger Pinch-to-Resize
+        let initialDistance = null;
+        let startScale = 1.8;
+
+        function getTouchDistance(touches) {
+          const dx = touches[0].clientX - touches[1].clientX;
+          const dy = touches[0].clientY - touches[1].clientY;
+          return Math.hypot(dx, dy);
         }
-      });
 
-      // 6. Two-Finger Pinch-to-Resize Gesture
-      let initialDistance = null;
-      let currentScale = 1.8; // Matches default A4 large scale
-      let startScale = 1.8;
+        window.addEventListener('touchstart', function (e) {
+          if (!splashScreen.classList.contains('hidden')) return;
+          if (e.touches.length === 2) {
+            initialDistance = getTouchDistance(e.touches);
+            startScale = currentScale;
+          }
+        }, { passive: false });
 
-      function getTouchDistance(touches) {
-        const dx = touches[0].clientX - touches[1].clientX;
-        const dy = touches[0].clientY - touches[1].clientY;
-        return Math.hypot(dx, dy);
-      }
+        window.addEventListener('touchmove', function (e) {
+          if (!splashScreen.classList.contains('hidden')) return;
+          if (e.touches.length === 2 && initialDistance) {
+            e.preventDefault();
+            const newDistance = getTouchDistance(e.touches);
+            const ratio = newDistance / initialDistance;
+            currentScale = Math.min(Math.max(startScale * ratio, 0.5), 4.5);
+            scalerEl.setAttribute('scale', currentScale + ' ' + currentScale + ' ' + currentScale);
+          }
+        }, { passive: false });
 
-      window.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 2) {
-          initialDistance = getTouchDistance(e.touches);
-          startScale = currentScale;
-        }
-      }, { passive: false });
-
-      window.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 2 && initialDistance) {
-          e.preventDefault();
-          const newDistance = getTouchDistance(e.touches);
-          const ratio = newDistance / initialDistance;
-          // Clamp scale between 0.5x and 4.5x so it never vanishes or crashes
-          currentScale = Math.min(Math.max(startScale * ratio, 0.5), 4.5);
-          scalerEl.setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`);
-        }
-      }, { passive: false });
-
-      window.addEventListener('touchend', (e) => {
-        if (e.touches.length < 2) {
-          initialDistance = null;
-        }
-      });
+        window.addEventListener('touchend', function (e) {
+          if (e.touches.length < 2) {
+            initialDistance = null;
+          }
+        });
+      })();
     </script>
   </body>
 </html>
