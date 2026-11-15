@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
@@ -13,6 +13,7 @@
         margin: 0; 
         overflow: hidden; 
         font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        touch-action: none;
       }
 
       /* Opening Splash Screen */
@@ -198,8 +199,8 @@
         font-size: 14px;
         text-align: center;
         pointer-events: none;
-        width: 75%;
-        max-width: 280px;
+        width: 78%;
+        max-width: 300px;
         box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
       }
 
@@ -218,6 +219,27 @@
         white-space: nowrap;
       }
     </style>
+
+    <script>
+      // Custom A-Frame Component: Keeps the standing hologram turned toward the camera from any side (360° around the image)
+      AFRAME.registerComponent('hologram-face-camera', {
+        tick: function () {
+          const camera = this.el.sceneEl.camera;
+          if (!camera) return;
+
+          const camWorldPos = new THREE.Vector3();
+          camera.getWorldPosition(camWorldPos);
+
+          // Convert camera position into the image target's local coordinate space
+          // In MindAR image space: X = right, Y = up along image, Z = perpendicular out of the image
+          const localCamPos = this.el.parentEl.object3D.worldToLocal(camWorldPos.clone());
+
+          // Calculate angle around the Z-axis (the vertical axis rising out of the flat book)
+          const angle = Math.atan2(localCamPos.y, localCamPos.x) - Math.PI / 2;
+          this.el.object3D.rotation.set(0, 0, angle);
+        }
+      });
+    </script>
   </head>
   <body>
 
@@ -249,9 +271,9 @@
     <div id="info-overlay">Scan your target image to project hologram...</div>
     <div id="ar-footer-credit">TANU • By M GUFRAN</div>
 
-    <!-- High missTolerance (60) + responsive tracking filter keeps the hologram locked to the image even as you move your phone -->
+    <!-- missTolerance: 45 allows steep 90-degree phone tilts and stepping back while still pausing when you walk away -->
     <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; maxTrack: 1; filterMinCF: 0.001; filterBeta: 0.01; missTolerance: 60;" 
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; maxTrack: 1; filterMinCF: 0.0005; filterBeta: 0.005; missTolerance: 45; warmupTolerance: 2;" 
       color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false" 
@@ -274,25 +296,33 @@
       <!-- Target Image Anchor -->
       <a-entity id="ar-target" mindar-image-target="targetIndex: 0">
         
-        <!-- Glowing Hologram Base Projector Ring on the Image -->
-        <a-ring 
-          color="#00f0ff" 
-          radius-inner="0.28" 
-          radius-outer="0.32" 
-          position="0 0 0.01" 
-          rotation="0 0 0"
-          material="shader: flat; transparent: true; opacity: 0.7;">
-        </a-ring>
+        <!-- Scalable Wrapper Group (Default 1.8 = A4 large scale; pinch with 2 fingers to resize) -->
+        <a-entity id="hologram-scaler" scale="1.8 1.8 1.8">
+          
+          <!-- Glowing Hologram Base Projector Ring -->
+          <a-ring 
+            color="#00f0ff" 
+            radius-inner="0.32" 
+            radius-outer="0.36" 
+            position="0 0 0.01" 
+            rotation="0 0 0"
+            material="shader: flat; transparent: true; opacity: 0.75;">
+          </a-ring>
 
-        <!-- Standing 3D Hologram Subject (Green background keyed out, standing upright off the page) -->
-        <a-plane 
-          id="hologram-display"
-          material="shader: chromakey; src: #holo-vid; color: 0.0 1.0 0.0; transparent: true; opacity: 0.90;"
-          width="1.1" 
-          height="0.62" 
-          position="0 0.05 0.28" 
-          rotation="65 0 0">
-        </a-plane>
+          <!-- Rotating Turntable Pivot: Always turns the standing hologram toward your camera from any side -->
+          <a-entity hologram-face-camera>
+            <!-- Full 90-degree upright posture so you can tilt your phone vertically and view from afar -->
+            <a-plane 
+              id="hologram-display"
+              material="shader: chromakey; src: #holo-vid; color: 0.0 1.0 0.0; transparent: true; opacity: 0.94; side: double;"
+              width="1.6" 
+              height="0.9" 
+              position="0 0 0.45" 
+              rotation="90 0 0">
+            </a-plane>
+          </a-entity>
+
+        </a-entity>
 
       </a-entity>
 
@@ -306,7 +336,9 @@
       const startBtn = document.querySelector('#start-ar-btn');
       const morphTitle = document.querySelector('#morph-title');
       const brandDef = document.querySelector('#brand-def');
+      const scalerEl = document.querySelector('#hologram-scaler');
 
+      // 1. Opening Title Morph Animation
       window.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
           morphTitle.classList.add('collapsed');
@@ -314,6 +346,7 @@
         }, 2000);
       });
 
+      // 2. Dismiss splash screen and unlock audio on tap
       startBtn.addEventListener('click', () => {
         splashScreen.classList.add('hidden');
         videoEl.play().then(() => {
@@ -322,24 +355,62 @@
         }).catch(() => {});
       });
 
+      // 3. Play when image is scanned
       targetEl.addEventListener("targetFound", () => {
         splashScreen.classList.add('hidden');
         videoEl.play().then(() => {
-          overlay.innerText = "✨ Hologram Locked to Image";
+          overlay.innerText = "✨ Hologram Active (Pinch 2 fingers to resize)";
         }).catch(() => {
           overlay.innerText = "🔊 Tap screen once to activate audio";
         });
       });
 
+      // 4. Pause when camera moves away from the image
       targetEl.addEventListener("targetLost", () => {
-        overlay.innerText = "Keep image in camera view";
+        videoEl.pause();
+        overlay.innerText = "Paused — Point camera back at image";
       });
 
+      // 5. Fallback screen tap to unlock audio if needed
       window.addEventListener('click', () => {
         if (!splashScreen.classList.contains('hidden')) return;
         if (videoEl.paused && overlay.innerText.includes("audio")) {
           videoEl.play();
-          overlay.innerText = "✨ Hologram Locked to Image";
+          overlay.innerText = "✨ Hologram Active (Pinch 2 fingers to resize)";
+        }
+      });
+
+      // 6. Two-Finger Pinch-to-Resize Gesture
+      let initialDistance = null;
+      let currentScale = 1.8;
+      let startScale = 1.8;
+
+      function getTouchDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.hypot(dx, dy);
+      }
+
+      window.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          initialDistance = getTouchDistance(e.touches);
+          startScale = currentScale;
+        }
+      }, { passive: false });
+
+      window.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && initialDistance) {
+          e.preventDefault();
+          const newDistance = getTouchDistance(e.touches);
+          const ratio = newDistance / initialDistance;
+          currentScale = Math.min(Math.max(startScale * ratio, 0.5), 4.5);
+          scalerEl.setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`);
+        }
+      }, { passive: false });
+
+      window.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+          initialDistance = null;
         }
       });
     </script>
