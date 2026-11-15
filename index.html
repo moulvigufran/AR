@@ -1,38 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>TANU // M GUFRAN</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    
-    <!-- Nothing OS Dot-Matrix & Technical Monospace Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
-    <!-- Built-in Native GLSL Chroma Key Shader -->
+    <!-- Crash-Proof GLSL Chroma Key Shader -->
     <script>
-      AFRAME.registerShader('holo-chromakey', {
+      AFRAME.registerShader('holo-key', {
         schema: {
-          src: { type: 'map' },
           color: { type: 'color', default: '#00ff00' },
           threshold: { type: 'number', default: 0.42 },
-          smoothness: { type: 'number', default: 0.12 },
-          opacity: { type: 'number', default: 0.95 }
+          smoothness: { type: 'number', default: 0.12 }
         },
         init: function (data) {
-          const videoTexture = new THREE.VideoTexture(data.src);
-          videoTexture.minFilter = THREE.LinearFilter;
-          videoTexture.magFilter = THREE.LinearFilter;
+          const videoEl = document.getElementById('vid');
+          const tex = new THREE.VideoTexture(videoEl);
+          tex.minFilter = THREE.LinearFilter;
+          tex.magFilter = THREE.LinearFilter;
 
           this.material = new THREE.ShaderMaterial({
             uniforms: {
-              tex: { value: videoTexture },
+              tex: { value: tex },
               keyColor: { value: new THREE.Color(data.color) },
               threshold: { value: data.threshold },
-              smoothness: { value: data.smoothness },
-              opacity: { value: data.opacity }
+              smoothness: { value: data.smoothness }
             },
             vertexShader: `
               varying vec2 vUv;
@@ -46,15 +41,12 @@
               uniform vec3 keyColor;
               uniform float threshold;
               uniform float smoothness;
-              uniform float opacity;
               varying vec2 vUv;
-
               void main() {
-                vec4 texColor = texture2D(tex, vUv);
-                float diff = distance(texColor.rgb, keyColor);
-                float alpha = smoothstep(threshold, threshold + smoothness, diff);
-                if (alpha < 0.05) discard;
-                gl_FragColor = vec4(texColor.rgb, alpha * opacity);
+                vec4 c = texture2D(tex, vUv);
+                float a = smoothstep(threshold, threshold + smoothness, distance(c.rgb, keyColor));
+                if (a < 0.05) discard;
+                gl_FragColor = vec4(c.rgb, a * 0.96);
               }
             `,
             transparent: true,
@@ -63,85 +55,416 @@
         }
       });
     </script>
-    
-    <style>
-      :root {
-        --nothing-bg: #000000;
-        --nothing-widget: #141414;
-        --nothing-border: #2C2C2C;
-        --nothing-white: #FFFFFF;
-        --nothing-grey: #8E8E93;
-        --nothing-red: #D71921;
-      }
 
-      html, body { 
-        margin: 0; 
+    <style>
+      html, body {
+        margin: 0;
         padding: 0;
         width: 100%;
         height: 100%;
-        overflow: hidden; 
-        background: transparent;
-        font-family: 'Space Mono', monospace;
+        overflow: hidden;
+        background-color: #000000;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         -webkit-font-smoothing: antialiased;
       }
 
       body.ar-active {
+        background-color: transparent;
         touch-action: none;
       }
 
-      /* ================= NOTHING OS SPLASH SCREEN ================= */
-      #splash-screen {
+      /* Nothing OS Splash Screen */
+      #splash {
         position: fixed;
-        inset: 0;
-        background-color: var(--nothing-bg);
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 9999;
+        background-color: #000000;
         background-image: radial-gradient(#262626 1px, transparent 1px);
         background-size: 16px 16px;
-        color: var(--nothing-white);
-        z-index: 9999;
+        color: #ffffff;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         align-items: center;
         padding: 28px 20px;
         box-sizing: border-box;
-        transition: opacity 0.45s ease, visibility 0.45s ease;
+        transition: opacity 0.4s ease, visibility 0.4s ease;
       }
 
-      #splash-screen.hidden {
+      #splash.hidden {
         opacity: 0;
         visibility: hidden;
         pointer-events: none;
       }
 
-      /* Nothing OS Top Status Pill */
-      .nothing-header {
+      .pill-bar {
         width: 100%;
-        max-width: 420px;
+        max-width: 400px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background: var(--nothing-widget);
-        border: 1px solid var(--nothing-border);
+        background-color: #141414;
+        border: 1px solid #2c2c2c;
         border-radius: 999px;
         padding: 10px 18px;
         box-sizing: border-box;
         font-size: 11px;
         letter-spacing: 2px;
-        color: var(--nothing-grey);
+        color: #888888;
       }
 
-      .glyph-dot {
+      .dot {
         display: inline-block;
         width: 8px;
         height: 8px;
-        background: var(--nothing-red);
         border-radius: 50%;
+        background-color: #D71921;
         margin-right: 8px;
-        box-shadow: 0 0 8px var(--nothing-red);
-        animation: blinkDot 1.4s infinite;
+        animation: pulse 1.4s infinite;
       }
 
-      @keyframes blinkDot {
+      @keyframes pulse {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.2; }
       }
+
+      .widget {
+        width: 100%;
+        max-width: 400px;
+        background-color: #141414;
+        border: 1px solid #2c2c2c;
+        border-radius: 30px;
+        padding: 46px 22px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      .morph {
+        min-height: 104px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 36px;
+      }
+
+      .title-row {
+        font-size: 20px;
+        line-height: 1.45;
+        color: #888888;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 7px;
+      }
+
+      .word {
+        display: inline-flex;
+      }
+
+      .hi {
+        color: #ffffff;
+        font-weight: 700;
+        transition: font-size 0.8s cubic-bezier(0.22, 1, 0.36, 1), letter-spacing 0.8s ease;
+      }
+
+      .rest {
+        display: inline-block;
+        max-width: 140px;
+        overflow: hidden;
+        white-space: nowrap;
+        transition: max-width 0.75s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+      }
+
+      .morph.collapsed .title-row { gap: 4px; }
+      .morph.collapsed .rest { max-width: 0; opacity: 0; }
+      .morph.collapsed .hi { font-size: 56px; letter-spacing: 10px; }
+
+      .arch {
+        font-size: 8px;
+        letter-spacing: 6px;
+        color: #D71921;
+        font-weight: 700;
+        margin-top: 6px;
+        opacity: 0;
+        transition: opacity 0.6s ease 0.4s;
+      }
+
+      .morph.collapsed .arch { opacity: 1; }
+
+      #start-btn {
+        background-color: #ffffff;
+        color: #000000;
+        border: none;
+        border-radius: 999px;
+        padding: 16px 32px;
+        width: 100%;
+        max-width: 260px;
+        font-family: inherit;
+        font-weight: 700;
+        font-size: 13px;
+        letter-spacing: 2px;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+
+      #start-btn:active {
+        background-color: #D71921;
+        color: #ffffff;
+        transform: scale(0.96);
+      }
+
+      .footer {
+        width: 100%;
+        max-width: 400px;
+        border-top: 1px dashed #2c2c2c;
+        padding-top: 14px;
+        text-align: center;
+        font-size: 12px;
+        letter-spacing: 3px;
+        color: #888888;
+      }
+
+      .footer span { color: #ffffff; }
+
+      /* Live Camera HUD */
+      #hud {
+        position: absolute;
+        top: 18px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 999;
+        background-color: rgba(15, 15, 15, 0.9);
+        color: #ffffff;
+        border: 1px solid #2c2c2c;
+        border-radius: 999px;
+        padding: 10px 18px;
+        font-size: 12px;
+        letter-spacing: 1px;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+      }
+
+      #dock {
+        position: absolute;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 999;
+        display: flex;
+        gap: 6px;
+        background-color: rgba(15, 15, 15, 0.9);
+        border: 1px solid #2c2c2c;
+        border-radius: 999px;
+        padding: 6px 10px;
+      }
+
+      .btn {
+        background-color: #1c1c1e;
+        color: #ffffff;
+        border: 1px solid #2c2c2c;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-family: inherit;
+        font-size: 11px;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+
+      .btn:active {
+        background-color: #D71921;
+        border-color: #D71921;
+      }
+
+      #watermark {
+        position: absolute;
+        bottom: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 999;
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 11px;
+        letter-spacing: 2.5px;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div id="splash">
+      <div class="pill-bar">
+        <span><span class="dot"></span>TANU.OS</span>
+        <span>HOLO // 01</span>
+      </div>
+
+      <div class="widget">
+        <div class="morph" id="morph">
+          <div class="title-row">
+            <span class="word"><span class="hi">T</span><span class="rest">opical</span></span>
+            <span class="word"><span class="hi">A</span><span class="rest">rticle &amp;</span></span>
+            <span class="word"><span class="hi">N</span><span class="rest">avigation</span></span>
+            <span class="word"><span class="hi">U</span><span class="rest">nit</span></span>
+          </div>
+          <div class="arch">ARCHITECTURE</div>
+        </div>
+        <button id="start-btn" type="button">INITIALIZE CAMERA &rarr;</button>
+      </div>
+
+      <div class="footer">BY <span>M GUFRAN</span></div>
+    </div>
+
+    <div id="hud"><span class="dot"></span><span id="status">SCAN TARGET IMAGE...</span></div>
+
+    <div id="dock">
+      <button class="btn" id="rot-l" type="button">&circlearrowleft;</button>
+      <button class="btn" id="rot-r" type="button">&circlearrowright;</button>
+      <button class="btn" id="reset" type="button">1:1</button>
+      <button class="btn" id="replay" type="button">REPLAY</button>
+      <button class="btn" id="mute" type="button">MUTE</button>
+    </div>
+
+    <div id="watermark">TANU &bull; BY M GUFRAN</div>
+
+    <a-scene
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; maxTrack: 1; filterMinCF: 0.0001; filterBeta: 0.0001; missTolerance: 20; warmupTolerance: 2;"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false">
+
+      <a-assets>
+        <video
+          id="vid"
+          src="./tasawur_video.html.mp4"
+          preload="auto"
+          loop
+          muted
+          crossorigin="anonymous"
+          playsinline
+          webkit-playsinline>
+        </video>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity id="target" mindar-image-target="targetIndex: 0">
+        <a-entity id="scaler" scale="1.8 1.8 1.8" rotation="0 0 0">
+          <a-ring
+            color="#D71921"
+            radius-inner="0.34"
+            radius-outer="0.36"
+            position="0 0 0.005"
+            material="shader: flat; transparent: true; opacity: 0.85;">
+          </a-ring>
+          <a-plane
+            material="shader: holo-key; color: #00ff00; threshold: 0.42; smoothness: 0.12;"
+            width="1.6"
+            height="0.9"
+            position="0 0 0.45"
+            rotation="90 0 0">
+          </a-plane>
+        </a-entity>
+      </a-entity>
+
+    </a-scene>
+
+    <script>
+      (function () {
+        var $ = function (id) { return document.getElementById(id); };
+        var vid = $('vid'), target = $('target'), status = $('status'),
+            splash = $('splash'), scaler = $('scaler'), muteBtn = $('mute');
+
+        var rotZ = 0, scale = 1.8, startDist = null, startScale = 1.8;
+
+        setTimeout(function () { $('morph').classList.add('collapsed'); }, 1500);
+
+        function hideSplash() {
+          splash.classList.add('hidden');
+          document.body.classList.add('ar-active');
+        }
+
+        $('start-btn').addEventListener('click', function () {
+          hideSplash();
+          vid.muted = false;
+          vid.play().then(function () { vid.pause(); vid.currentTime = 0; }).catch(function () {
+            vid.muted = true;
+            muteBtn.textContent = 'UNMUTE';
+          });
+        });
+
+        target.addEventListener('targetFound', function () {
+          hideSplash();
+          vid.play().then(function () {
+            status.textContent = vid.muted ? 'LOCKED // TAP UNMUTE' : 'LOCKED // PINCH TO RESIZE';
+          }).catch(function () {
+            vid.muted = true;
+            muteBtn.textContent = 'UNMUTE';
+            vid.play();
+            status.textContent = 'LOCKED // TAP UNMUTE';
+          });
+        });
+
+        target.addEventListener('targetLost', function () {
+          vid.pause();
+          status.textContent = 'PAUSED // POINT AT IMAGE';
+        });
+
+        $('rot-l').addEventListener('click', function () {
+          rotZ -= 15;
+          scaler.setAttribute('rotation', '0 0 ' + rotZ);
+        });
+        $('rot-r').addEventListener('click', function () {
+          rotZ += 15;
+          scaler.setAttribute('rotation', '0 0 ' + rotZ);
+        });
+        $('reset').addEventListener('click', function () {
+          scale = 1.8; rotZ = 0;
+          scaler.setAttribute('scale', '1.8 1.8 1.8');
+          scaler.setAttribute('rotation', '0 0 0');
+        });
+        $('replay').addEventListener('click', function () {
+          vid.currentTime = 0;
+          vid.play();
+        });
+        muteBtn.addEventListener('click', function () {
+          vid.muted = !vid.muted;
+          muteBtn.textContent = vid.muted ? 'UNMUTE' : 'MUTE';
+          if (!vid.muted) {
+            if (vid.paused) vid.play();
+            status.textContent = 'LOCKED // PINCH TO RESIZE';
+          }
+        });
+
+        function dist(t) {
+          return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+        }
+
+        window.addEventListener('touchstart', function (e) {
+          if (splash.classList.contains('hidden') && e.touches.length === 2) {
+            startDist = dist(e.touches);
+            startScale = scale;
+          }
+        }, { passive: false });
+
+        window.addEventListener('touchmove', function (e) {
+          if (splash.classList.contains('hidden') && e.touches.length === 2 && startDist) {
+            e.preventDefault();
+            scale = Math.min(Math.max(startScale * (dist(e.touches) / startDist), 0.5), 4.5);
+            scaler.setAttribute('scale', scale + ' ' + scale + ' ' + scale);
+          }
+        }, { passive: false });
+
+        window.addEventListener('touchend', function (e) {
+          if (e.touches.length < 2) startDist = null;
+        });
+      })();
+    </script>
+  </body>
+</html>
